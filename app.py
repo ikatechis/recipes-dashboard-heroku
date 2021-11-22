@@ -12,11 +12,9 @@ import plotly.graph_objects as go
 
 import dash
 from dash import dcc
-import dash_bootstrap_components as dbc
 from dash import html
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 from dash.dependencies import Input, Output, State
-from skimage import io
 
 
 
