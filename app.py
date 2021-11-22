@@ -13,15 +13,13 @@ import plotly.graph_objects as go
 import dash
 from dash import dcc
 from dash import html
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-from dash.dependencies import Input, Output, State
-
+from dash.dependencies import Input, Output
 
 
 # ------------------------------------------------------ GRAPHS ------------------------------------------------------
 # Define Global Variables
-df_ing = pd.read_csv('../data/ingredient_data.csv')
-df_rec = pd.read_csv('../data/recipes_per_year.csv')
+df_ing = pd.read_csv('./data/ingredient_data.csv')
+df_rec = pd.read_csv('./data/recipes_per_year.csv')
 
 cuisine_opt = ['North American', 'Italian', 'European', 'Asian', 'South West Pacific', 'French', 'Indian', 
                'Greek', 'Chinese', 'Mexican', 'Thai', 'German', 'Spanish', 'Middle Eastern', 'South American', 
@@ -50,10 +48,11 @@ health_opt = ['Kid Friendly', 'Toddler Friendly', 'Baby Friendly', 'Sugar Free',
 other_opt = ['Light', 'Easy', 'Spicy', 'Served Hot', 'Served Cold', 'Summer', 'Fall', 'Winter', 'Spring', 
              '< 60 Mins', '< 30 Mins', '< 4 Hours', '< 15 Mins', '> 1 Day', 'College', 'Comfort Food']
 
-rec = pd.read_csv('../data/cleaned_recipes_fotis.csv')
+rec = pd.read_parquet('./data/recipes_cleaned.parquet')
+rec = rec.reset_index(drop=True)
 
 
-a = pd.read_csv('../data/total_recipes_per_year_fotis.csv')
+a = pd.read_csv('./data/total_recipes_per_year_fotis.csv')
 
 # Functions
 def make_sunburst(min_rec=100, max_rec=df_ing.counts.max()):
@@ -92,9 +91,7 @@ sun_slider = dcc.RangeSlider(
             int(f'{df_ing["counts"].max()}'): {'label': 'max'}
         }
         )
-# colors = ['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3',
-#           '#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd',
-#           '#ccebc5','#ffed6f']
+
 
 def make_funnel(min_rec=100, max_rec=df_ing.counts.max(), from_sun='ALL'):
     if from_sun == 'ALL':
@@ -154,8 +151,7 @@ def make_ingr(from_sun='ALL'):
     return fig
 
 def make_time_figs(dropped='rec'):
-    print('HEEEEEERE')
-    
+
     if dropped == 'rec':
         fig = px.area(df_rec, x='year', y='nr_recipes', color_discrete_sequence=['#bc80bd'], template='ggplot2')
         fig.update_layout({'plot_bgcolor': 'rgba(0, 0, 0, 0)', 
@@ -379,6 +375,7 @@ tab2 = html.Div(className='tab2', children=[
 app = dash.Dash(__name__)
 app.title = 'Recipes Dashboard'
 app._favicon = ("burger.ico")
+server = app.server
 
 app.layout = html.Div(id='main', children=[
     
@@ -497,7 +494,7 @@ def update_time(value):
      dash.dependencies.Input('multi_dropdown6', 'value'),
      dash.dependencies.Input('multi_dropdown7', 'value')])
 def text_from_multi_dropdown(md1,md2,md3,md4,md5,md6,md7):
-    mask=pd.Series(np.ones(494949), dtype=bool) # Reset to all True mask
+    mask=pd.Series(np.ones(rec.shape[0]), dtype=bool) # Reset to all True mask
     if md1 != []:
         mask *= rec.new_tags.str.contains('|'.join(md1),na=False) #  means 'or'
     if md2 != []:
@@ -539,7 +536,7 @@ def text_from_multi_dropdown(md1,md2,md3,md4,md5,md6,md7):
     mask_counts_per_year = rec[mask].groupby('YearPublished').count()
     mask_counts_per_year.reset_index(inplace=True)
     b = mask_counts_per_year[['YearPublished','id']]
-    b = b.fillna(0)
+    # b = b.fillna(0)
     b.reset_index(inplace=True)
     count_perc_per_year = a.merge(b , on='YearPublished')
     count_perc_per_year['perc']=round(100*count_perc_per_year.id_y/count_perc_per_year.id_x, 2)
@@ -577,7 +574,7 @@ def select_1(name):
         s = rec.loc[result[0][0]].ingredients_raw_str
         for i in range(10):
             s = s.replace('  ',' ')
-        st=rec.loc[result[0][0]].Name +'\n\nIngredients\n\n'
+        st=rec.loc[result[0][0]].id_name +'\n\nIngredients\n\n'
         for i in range(len(s.split('"')[1::2])):
             st += '* ' + s.split('"')[1::2][i].strip()+'\n'
         text_ingr = st
